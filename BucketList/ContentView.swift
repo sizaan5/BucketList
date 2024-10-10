@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import LocalAuthentication
 
 struct Location: Identifiable {
     let id: UUID = UUID()
@@ -27,28 +28,34 @@ struct ContentView: View {
         )
     )
     
+    @State private var isUnlocked: Bool = false
+    
     var body: some View {
         VStack {
-            MapReader { proxy in
-                Map {
-                    ForEach(locations) { location in
-                        //Marker(location.name, coordinate: location.coordinate)
-                        Annotation(location.name, coordinate: location.coordinate) {
-                            Text(location.name)
-                                .font(.headline)
-                                .padding()
-                                .background(.blue)
-                                .foregroundStyle(.white)
-                                .clipShape(.capsule)
+            if !isUnlocked {
+                MapReader { proxy in
+                    Map {
+                        ForEach(locations) { location in
+                            //Marker(location.name, coordinate: location.coordinate)
+                            Annotation(location.name, coordinate: location.coordinate) {
+                                Text(location.name)
+                                    .font(.headline)
+                                    .padding()
+                                    .background(.blue)
+                                    .foregroundStyle(.white)
+                                    .clipShape(.capsule)
+                            }
+                            .annotationTitles(.hidden)
                         }
-                        .annotationTitles(.hidden)
+                    }
+                    .onTapGesture { position in
+                        if let coordinate = proxy.convert(position, from: .local) {
+                            print(coordinate)
+                        }
                     }
                 }
-                .onTapGesture { position in
-                    if let coordinate = proxy.convert(position, from: .local) {
-                        print(coordinate)
-                    }
-                }
+            } else {
+                Text("Locked")
             }
             /*(position: $position)
                 .mapStyle(.hybrid(elevation: .realistic))
@@ -84,6 +91,27 @@ struct ContentView: View {
                     )
                 }
             }*/
+        }
+        .onAppear(perform: authenticate)
+    }
+    
+    func authenticate() {
+        let context = LAContext()
+        var error: NSError?
+        
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let reason = "We need to unlock your data."
+            
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
+                if success {
+                    // authenticated successfully
+                    isUnlocked = true
+                } else {
+                    // there was a problem
+                }
+            }
+        } else {
+            // no biometrics
         }
     }
 }
