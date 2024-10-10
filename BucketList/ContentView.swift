@@ -10,7 +10,7 @@ import MapKit
 import LocalAuthentication
 
 struct ContentView: View {
-    let startPosition = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 24.8607, longitude: 67.0011), span: MKCoordinateSpan(latitudeDelta: 1, longitudeDelta: 1)))
+    let startPosition = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 30.3753, longitude: 69.3451), span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10)))
     
     @State private var locations: [Location] = []
     
@@ -18,7 +18,14 @@ struct ContentView: View {
         MapReader { proxy in
             Map(initialPosition: startPosition) {
                 ForEach(locations) { location in
-                    Marker(location.name, coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude))
+                    Annotation(location.name, coordinate: location.coordinate) {
+                        Image(systemName: "star.circle")
+                            .resizable()
+                            .foregroundStyle(.red)
+                            .frame(width: 44, height: 44)
+                            .background(.white)
+                            .clipShape(.circle)
+                    }
                 }
             }
                 .onTapGesture { position in
