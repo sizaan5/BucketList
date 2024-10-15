@@ -9,14 +9,27 @@ import Foundation
 import MapKit
 import CoreLocation
 import LocalAuthentication
+import _MapKit_SwiftUI
 
 extension ContentView {
     @Observable
     class ViewModel {
         private(set) var locations: [Location]
         var selectedPlace: Location?
-        var isUnlocked = false
+        var isUnlocked = true
         
+        var mapType: Int = 0
+        var selectedMapStyle: MapStyle {
+            return switch(mapType) {
+            case 0: .standard
+            case 1: .hybrid
+            case 2: .imagery
+            default: .standard
+            }
+        }
+        
+        var isPresented: Bool = false
+        var alertMessage = ""
         
         let savePath = URL.documentsDirectory.appending(path: "SavedPlaces")
         init() {
@@ -28,33 +41,43 @@ extension ContentView {
             }
         }
         
-        func save() {
+        func save(completion: @escaping(_ msg: String) -> ()) {
             do {
                 let data = try JSONEncoder().encode(locations)
                 try data.write(to: savePath, options: [.atomic, .completeFileProtection])
+                completion("")
             } catch {
-                print("Unable to save data.")
+                completion("Unable to save data.")
             }
         }
         
-        func addLocation(at point: CLLocationCoordinate2D) {
+        func addLocation(at point: CLLocationCoordinate2D) -> String {
+            var result = ""
             let newLocation = Location(id: UUID(), name: "New location", description: "", latitude: point.latitude, longitude: point.longitude)
             self.locations.append(newLocation)
-            self.save()
+            self.save { msg in
+                result = msg
+            }
+            return result
         }
         
-        func updateLocation(location: Location) {
-            guard let selectedPlace else { return }
+        func updateLocation(location: Location) -> String {
+            guard let selectedPlace else { return "" }
+            var result = ""
             
             if let index = locations.firstIndex(of: selectedPlace) {
                 locations[index] = location
-                self.save()
+                self.save { msg in
+                    result = msg
+                }
             }
+            return result
         }
         
-        func authenticate() {
+        func authenticate() async -> String? {
             let context = LAContext()
             var error: NSError?
+            var result: String?
             
             if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
                 let reason = "Please authenticate yourself to unlock your places."
@@ -64,11 +87,14 @@ extension ContentView {
                         self.isUnlocked = true
                     } else {
                         //error
+                        result = authenticationError?.localizedDescription
                     }
                 }
             } else {
                 // no biometrics
+                result = error?.localizedDescription
             }
+            return result
         }
     }
 }
